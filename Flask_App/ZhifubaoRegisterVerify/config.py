@@ -21,17 +21,17 @@ LOG_CONFIG = {
         'info_file': {
             'class': 'logging.FileHandler',
             'formatter': 'simple',
-            'filename': os.path.join(BASE_DIR, r'log\info.log'),
+            'filename': os.path.join(BASE_DIR, 'log', 'info.log'),
         },
         'err_file': {
             'class': 'logging.FileHandler',
             'formatter': 'precise',
-            'filename':  os.path.join(BASE_DIR, r'log\error.log'),
+            'filename':  os.path.join(BASE_DIR, 'log', 'error.log'),
         },
         'detail_file': {
             'class': 'logging.FileHandler',
             'formatter': 'precise',
-            'filename': os.path.join(BASE_DIR, r'log\detail.log'),
+            'filename': os.path.join(BASE_DIR, 'log', 'detail.log'),
         },
 
         'console': {
