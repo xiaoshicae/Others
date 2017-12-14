@@ -58,5 +58,6 @@ def multi_thread(t_num):
 
 
 if __name__ == '__main__':
-    t_num = 5
-    multi_thread(t_num)
+    # t_num = 5
+    # multi_thread(t_num)
+    phone_query(100)

@@ -1,17 +1,29 @@
+import os
+import time
 import json
 import logging
 import base64
 
+import numpy as np
 import requests
+from PIL import Image
 from lxml import etree
 from requests.exceptions import Timeout, ReadTimeout, ProxyError, ConnectionError
 
-from .KerasCaptchaCrack.model.predict import main as predict_main
-
+# from .KerasCaptchaCrack.model.predict import main as predict_main
+from .KerasCaptchaCrack.model.model import model as create_model
+from .KerasCaptchaCrack.model.config import CHARACTERS, BASE_DIR
 
 info_logger = logging.getLogger("info_log")
 err_logger = logging.getLogger("err_log")
 detail_logger = logging.getLogger("detail_log")
+
+
+def load_model(weights_file):
+    print("初始类进行加载")
+    base_model, model = create_model()
+    base_model.load_weights(os.path.join(BASE_DIR, 'model_parameters', weights_file))
+    return base_model
 
 
 class PhoneRegisterCheck:
@@ -24,6 +36,8 @@ class PhoneRegisterCheck:
         1 : 号码未注册;
         -1 : 结果异常(验证码错误, 其它错误);
     """
+
+    model = load_model('weights_firts_d.37.hdf5')  # 初始化model对象, 以免重复加载
 
     def __init__(self):
         """
@@ -67,7 +81,10 @@ class PhoneRegisterCheck:
             # 引入keras图片识别
             from io import BytesIO
             img_data = BytesIO(img_data)
-            captcha_code = predict_main(img_data)
+            # captcha_code = predict_main(img_data)
+            b = time.time()
+            captcha_code = self.model_predict(img_data)
+            print("验证码识别耗时:【%.2fs】" % (time.time() - b))
 
             # 第三方验证码接口
             # img_b64 = img_convert(img_data)
@@ -182,8 +199,46 @@ class PhoneRegisterCheck:
 
         return result
 
+    def model_predict(self, img):
+        img_data = Image.open(img)
+        img_data = np.array(img_data).transpose((1, 0, 2))
+        X = img_data
+        X = np.expand_dims(X, 0)
+        y_predict = self.model.predict(X, batch_size=2048, verbose=0)
+        y_predict = y_predict[:, 2:, :]
+        out = self.decode(y_predict)
+        return out
+
+    @staticmethod
+    def decode(y):
+        characters = CHARACTERS + ' '
+
+        arg_max = np.argmax(np.array(y), axis=2)[0]
+        value_max = np.max(np.array(y), axis=2)[0]
+        value_max = [round(value, 3) for value in value_max]
+        zip_list = list(zip(range(len(arg_max)), arg_max, value_max))  # 位置索引,arr最大值所在arg位置,arr最大值 zip到一起
+
+        # 删除arg=36的元素(36代表空值)
+        tmp = []
+        for i in zip_list:
+            if i[1] != 36:
+                tmp.append(i)
+
+        # 按arr最大值排序,并取最大前四个值(概率最大的四个)
+        tmp.sort(key=lambda x: x[2], reverse=True)
+        tmp = tmp[:4]
+
+        # 按索引位置排序,还原位置
+        tmp.sort(key=lambda x: x[0])
+
+        # 取出arr的arg
+        res = [i[1] for i in tmp]
+
+        return ''.join([characters[x] for x in res])
+
 
 def get_proxies():
+    begin = time.time()
     # url = 'http://127.0.0.1:5020/ip/get/'
     url = 'http://192.168.30.248:8080/get/'
     try:
@@ -196,6 +251,7 @@ def get_proxies():
             status_code = requests.get(ping_url, timeout=3.1, proxies=proxies).status_code
             if status_code == 200:
                 info_logger.info(json.dumps(proxies) + 'status 200 ok')
+                print("代理请求成功,耗时:【%.2fs】" % (time.time()-begin))
                 return proxies
             else:
                 count += 1
@@ -206,6 +262,7 @@ def get_proxies():
 
     except Exception as e:
         err_logger.error(str(e))
+        print("代理请求失败,耗时:【%.2fs】" % (time.time() - begin))
         return None
 
 

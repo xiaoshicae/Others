@@ -20,7 +20,8 @@ def decode(y):
 
 
 def predict(model, img_data):
-    model.load_weights(r'C:\Users\YongHu\Desktop\TMP\model_parameter\weights_first.23.hdf5')
+    # model.load_weights(r'C:\Users\YongHu\Desktop\TMP\model_parameter\weights_first.23.hdf5')
+    model.load_weights(os.path.join(config_module.BASE_DIR, 'model_parameters', 'weights_first.23.hdf5'))
     characters2 = config_module.CHARACTERS + ' '
 
     X = img_data
