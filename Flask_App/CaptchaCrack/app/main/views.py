@@ -5,7 +5,7 @@ import logging
 from flask import jsonify, request
 
 from . import main
-from ..script.captcha_crack import main as crack_main
+from ..script.KerasCrack import main as crack_main
 
 info_logger = logging.getLogger("info_log")
 err_logger = logging.getLogger("err_log")

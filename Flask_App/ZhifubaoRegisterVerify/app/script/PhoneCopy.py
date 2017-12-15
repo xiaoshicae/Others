@@ -1,17 +1,30 @@
-import base64
+import os
 import time
 import json
 import logging
+import base64
 import traceback
 
+import numpy as np
 import requests
+from PIL import Image
 from lxml import etree
 from requests.exceptions import Timeout, ReadTimeout, ProxyError, ConnectionError
 
+# from .KerasCaptchaCrack.model.predict import main as predict_main
+from .KerasCaptchaCrack.model.model import model as create_model
+from .KerasCaptchaCrack.model.config import CHARACTERS, BASE_DIR
 
 info_logger = logging.getLogger("info_log")
 err_logger = logging.getLogger("err_log")
 detail_logger = logging.getLogger("detail_log")
+
+
+def load_model(weights_file):
+    print("初始类进行加载")
+    base_model, model = create_model()
+    base_model.load_weights(os.path.join(BASE_DIR, 'model_parameters', weights_file))
+    return base_model
 
 
 class PhoneRegisterCheck:
@@ -25,13 +38,14 @@ class PhoneRegisterCheck:
         -1 : 结果异常(验证码错误, 其它错误);
     """
 
+    model = load_model('weights_firts_d.37.hdf5')  # 初始化model对象, 以免重复加载
+
     def __init__(self):
         """
             初始化session, 获取IP代理
         """
         self.session = requests.session()
         self.proxies = get_proxies()
-        # self.proxies = None
         self.img_data = b''
 
     def get_captcha_code(self):
@@ -65,15 +79,20 @@ class PhoneRegisterCheck:
 
             img_data = self.session.get(captcha_url, proxies=self.proxies, timeout=(6.1, 15)).content
             self.img_data = img_data
+            # 引入keras图片识别
+            from io import BytesIO
+            img_data = BytesIO(img_data)
+            # captcha_code = predict_main(img_data)
+            b = time.time()
+            captcha_code = self.model_predict(img_data)
+            print("验证码识别耗时:【%.2fs】" % (time.time() - b))
 
             # 第三方验证码接口
-            img_b64 = self.img_encoder(img_data)
-            if not img_b64:
-                result['failReason'] = '图片无法转换为base64'
-                return result
-            begin = time.time()
-            captcha_code = crack_captcha(img_b64)
-            print('本次验证码请求耗时: 【%.2fs】'% (time.time()-begin))
+            # img_b64 = self.img_convert(img_data)
+            # if not img_b64:
+            #     result['failReason'] = '图片无法转换为base64'
+            #     return result
+            # captcha_code = crack_captcha(img_b64)
 
             # --*-- 手动输入验证码进行测试 --*--
             # from io import BytesIO
@@ -101,6 +120,15 @@ class PhoneRegisterCheck:
 
         result['failReason'] = '网络请求错误'
         return result
+
+    @staticmethod
+    def img_convert(img_data):
+        try:
+            img_b64 = base64.encodebytes(img_data).decode()
+            return img_b64
+        except Exception as e:
+            print(e)
+            return None
 
     def get_check_result(self, _form_token, captcha_code, phone):
         """
@@ -183,14 +211,48 @@ class PhoneRegisterCheck:
 
         return result
 
+    def model_predict(self, img):
+        img_data = Image.open(img)
+        img_data = np.array(img_data).transpose((1, 0, 2))
+        X = img_data
+        X = np.expand_dims(X, 0)
+        y_predict = self.model.predict(X, batch_size=2048, verbose=0)
+        y_predict = y_predict[:, 2:, :]
+        y_predict = self.softmax(y_predict)
+        out = self.decode(y_predict)
+        return out
+
     @staticmethod
-    def img_encoder(img_data):
-        try:
-            img_b64 = base64.encodebytes(img_data).decode()
-            return img_b64
-        except Exception as e:
-            print(e)
-            return None
+    def decode(y):
+        characters = CHARACTERS + ' '
+
+        arg_max = np.argmax(np.array(y), axis=2)[0]
+        value_max = np.max(np.array(y), axis=2)[0]
+        value_max = [round(value, 3) for value in value_max]
+        zip_list = list(zip(range(len(arg_max)), arg_max, value_max))  # 位置索引,arr最大值所在arg位置,arr最大值 zip到一起
+
+        # 删除arg=36的元素(36代表空值)
+        tmp = []
+        for i in zip_list:
+            if i[1] != 36:
+                tmp.append(i)
+
+        # 按arr最大值排序,并取最大前四个值(概率最大的四个)
+        tmp.sort(key=lambda x: x[2], reverse=True)
+        tmp = tmp[:4]
+
+        # 按索引位置排序,还原位置
+        tmp.sort(key=lambda x: x[0])
+
+        # 取出arr的arg
+        res = [i[1] for i in tmp]
+
+        return ''.join([characters[x] for x in res])
+
+    @staticmethod
+    def softmax(x):
+        e_x = np.exp(x - np.max(x))
+        return e_x / e_x.sum(axis=1)
 
 
 def get_proxies():
@@ -205,7 +267,6 @@ def get_proxies():
             proxies = json.loads(info.get('proxies', None))
             ping_url = 'https://www.alipay.com/'
             status_code = requests.get(ping_url, timeout=3.1, proxies=proxies).status_code
-            # status_code = 200
             if status_code == 200:
                 info_logger.info(json.dumps(proxies) + 'status 200 ok')
                 print("代理请求成功,耗时:【%.2fs】" % (time.time()-begin))

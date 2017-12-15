@@ -68,12 +68,12 @@ def phone_verify():
 
     result['phone'] = phone
 
-    check_result = get_result(phone)
+    # check_result = get_result(phone)
     #
-    if not check_result:
-        check_result = {'statusCode': -1, 'registerStatus': None, 'failReason': '请求超时'}
-    # prc = PhoneRegisterCheck()
-    # check_result = prc.check(phone)
+    # if not check_result:
+    #     check_result = {'statusCode': -1, 'registerStatus': None, 'failReason': '请求超时'}
+    prc = PhoneRegisterCheck()
+    check_result = prc.check(phone)
     result['checkResult'] = check_result
 
     info_logger.info(json.dumps(result))
@@ -100,7 +100,7 @@ def get_result(phone):
         t.start()
 
     begin = time.time()
-    while Worker.result is None and time.time()-begin < 5:
+    while Worker.result is None and time.time()-begin < 3:
         continue
     Worker.stop_flag = True
     return Worker.result
