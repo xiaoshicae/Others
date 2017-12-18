@@ -1,3 +1,4 @@
+import copy
 import base64
 import time
 import json
@@ -6,8 +7,8 @@ import traceback
 
 import requests
 from lxml import etree
+from selenium import webdriver
 from requests.exceptions import Timeout, ReadTimeout, ProxyError, ConnectionError
-
 
 info_logger = logging.getLogger("info_log")
 err_logger = logging.getLogger("err_log")
@@ -24,13 +25,15 @@ class PhoneRegisterCheck:
         1 : 号码未注册;
         -1 : 结果异常(验证码错误, 其它错误);
     """
+    driver = webdriver.Chrome(executable_path=r'C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe')
 
     def __init__(self):
         """
             初始化session, 获取IP代理
         """
         self.session = requests.session()
-        self.proxies = get_proxies()
+        self.proxies = copy.deepcopy(get_proxies())
+        print('Get proxies:【%s】' % self.proxies)
         # self.proxies = None
         self.img_data = b''
 
@@ -44,7 +47,10 @@ class PhoneRegisterCheck:
         url = 'https://accounts.alipay.com/console/dispatch.htm?scene_code=resetQueryPwd&page_type=fullpage&site=1'
         try:
             resp = self.session.get(url, proxies=self.proxies, timeout=(6.1, 15))
-            content = resp.content.decode(encoding='GBK')
+            try:
+                content = resp.content.decode(encoding='GBK')
+            except:
+                content = resp.content.decode(encoding='utf-8')
 
             tree = etree.HTML(content)
             _form_token = tree.xpath('//input[@name="_form_token"]/@value')
@@ -73,7 +79,7 @@ class PhoneRegisterCheck:
                 return result
             begin = time.time()
             captcha_code = crack_captcha(img_b64)
-            print('本次验证码请求耗时: 【%.2fs】'% (time.time()-begin))
+            print('本次验证码请求耗时: 【%.2fs】' % (time.time() - begin))
 
             # --*-- 手动输入验证码进行测试 --*--
             # from io import BytesIO
@@ -113,14 +119,38 @@ class PhoneRegisterCheck:
 
         url = 'https://accounts.alipay.com/console/querypwd/logonIdInputReset.htm?site=1&page_type=fullpage&scene_code=resetQueryPwd&return_url='
 
+        headers = {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept-Language': 'zh-CN,zh;q=0.8',
+            'Cache-Control': 'max-age=0',
+            'Connection': 'keep-alive',
+            'Content-Length': '1764',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Host': 'accounts.alipay.com',
+            'Origin': 'https://accounts.alipay.com',
+            'Referer': 'https://accounts.alipay.com/console/querypwd/logonIdInputReset.htm?site=1&page_type=fullpage&scene_code=resetQueryPwd&return_url=',
+            'Upgrade-Insecure-Requests': '1',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.101 Safari/537.36'
+        }
+
+        ua = ''
+        try:
+            self.driver.get(r"C:\Users\YongHu\Desktop\TMP\tt.html")
+            page_source = self.driver.page_source
+            ua = etree.HTML(page_source).xpath('//*[@id="UA_InputId"]/@value')[0]
+        except Exception as e:
+            print(e)
+
         data = {
-            'ua': '084BqFYKOYNNcUuXukRErVNJIN+ErdLIZYCAw==|BaFEKYlxHLpCJ4Z9GLlII+s=|BKNGQfZ8SK8JOMgjU+Qbd8AlW5k5C/pcd5F6e7M=|A6dcLJs3D6IOYs5mA65WP5kyCK1QPZw3Xf9XM5NjXf1SN5Q7BfENYsI+BqBYNJQ7UvMNMMQ0X/gFbsk1D6IKMsRuCq9UT4B5FaI2|AqZWJugTY8c8TOgZad5hXLtSb48/GbEjV/JDLNwtVPEaG9M=|AaxJN4AU|AKxJN4AU|D6tTI+0GMtNuQqRXJJ42Cf9ZcIs2GaIKOsZ/Qq5JdowoW60LOd95SblfcpI+EPxFbp95SbMdLtVVbbEWOtpnaZkjGvscKMltDuhIYJBkCboDPsxgY4IyHu4aIMBlVbAYI9M8E+VJe4sdIth1TORfZoAsBMB8RaISHvxRL5Z9A8tf|DqhNSu8KZt8nQuUcbM8xW+Iaf9ghUfUMaM0oRekSfsc/U/ILCsI=|Da5LTPsQYMQ/UOkQYMc9UPRgYQ==|DK1IT/h7Cv5Ua7AYKdkyQuMYdM02W/YTfNAvSoIW|C6tOSf59DPhSbbYeL980RIp3GrpfMZVub9YvX+gDc9IqTup+fw==|CqhNSv1+D/tRbrUdLNw3R+MGbso7VJwI|CalMS/x/DvpQb7QcLd02Roh1GLhdM5dsbdQtXeoBcdEuS+h8fQ==|CKhNSv1+D/tRbrUdLNw3R4l0GblcMpZtbNUsXOsAcNAhS+t/fg==|F7RRVuFiE+dNcqkBMMArW/8BcdQxWPQFYak9|FrVQV+BjEuZMc6gAMcEqWvkHd9M2X/MDb6cz|FbZTVONgEeVPcKsDMsIpWfULe947Xv4AaaE1|FLZTVONgEeVPcKsDMsIpWfwZdNcpQ+56ew==|E7FUU+RnFuJId6wENcUuXvofctAsReJ2dw==|ErJXUOdkFeNCe40vEOpHfsksK419GaBbMJcDc9YzTfofctAsReh8fQ==|EbNWUeZlFOBKda4GN8csXPkccdMvReN3dg==|ELJXUOdkFeNCe40vEOpHfsksQfgAa8s0UJgM|H75bXOsAcNEtRP0Gbc0oRuEbcd1JSA==|Hr9aXeoBcdEpRfwHbMovQeAZdtdDQg==|Hb9aXeppGO5PdoAiHedKc8QhTfQPZsc6XpYC|HL1YX+gDc9IjTfQPZMgtQ+MSf9NHRg==|G7lcW+xvHuhJcIYkG+FMdcInSvMIYsU0WJAE|GrpfWO8EdLpAJIdiDapTUusSYtU+TukWeNUpKOA=|GbteWe5tHOpLcoQmGeNOd8AlSfALYcY2WpIG|GLpfWO8EdNA1W/gDZsZSUw==|J4Z/E6pTI4RhDK1VJYN/FK1RNI1zGqNbNpdyH6ZdNo9wAKRZKY9xAaVeLopyAqVdLYpzA6dXJ4F5Ca9WJoZjDaBFK4lsHb9aK4ZjDaxJOJxlFbJJOYF7C6xVJYFxcA==',
+            'ua': ua,
             '_form_token': _form_token,
             'logonId': phone,
             'picCheckCode': captcha_code
         }
+
         try:
-            resp = self.session.post(url, proxies=self.proxies, data=data, timeout=(6.1, 15))
+            resp = self.session.post(url, proxies=self.proxies, headers=headers, data=data, timeout=(6.1, 15))
             content = resp.content.decode(encoding='GBK')
         except Exception as e:
             print(e)
@@ -143,6 +173,17 @@ class PhoneRegisterCheck:
                 result['statusCode'] = -1
                 result['failReason'] = '页面解析错误,未找到check标志'
                 return result
+
+        elif tree.xpath('//div[@class="ui-tipbox-content"]/h3/text()') == ['您暂时不能访问此页面，请稍后再试']:
+            result['statusCode'] = -1
+            result['failReason'] = '访问频率过快,IP被禁'
+            del_proxies(self.proxies)
+            return result
+
+        elif tree.xpath('//div[@class="ui-tipbox-content"]/h3/text()') == ['对不起，请不要重复提交请求。 请回到原始页面重新刷新']:
+            result['statusCode'] = -1
+            result['failReason'] = '重复提交'
+            return result
 
         else:
             result['statusCode'] = 0
@@ -195,8 +236,9 @@ class PhoneRegisterCheck:
 
 def get_proxies():
     begin = time.time()
-    # url = 'http://127.0.0.1:5020/ip/get/'
-    url = 'http://192.168.30.248:8080/get/'
+    url = 'http://127.0.0.1:5020/ip/get/'
+    # url = 'http://192.168.30.248:8080/get/'
+    proxies = ''
     try:
         count = 0
         while count < 5:
@@ -204,23 +246,38 @@ def get_proxies():
             info = json.loads(content)
             proxies = json.loads(info.get('proxies', None))
             ping_url = 'https://www.alipay.com/'
-            status_code = requests.get(ping_url, timeout=3.1, proxies=proxies).status_code
+            status_code = 404
+            try:
+                status_code = requests.get(ping_url, timeout=3.1, proxies=proxies).status_code
+            except:
+                print('代理请求失败')
+                del_proxies(proxies)
             # status_code = 200
             if status_code == 200:
                 info_logger.info(json.dumps(proxies) + 'status 200 ok')
-                print("代理请求成功,耗时:【%.2fs】" % (time.time()-begin))
+                print("代理请求成功,耗时:【%.2fs】" % (time.time() - begin))
                 return proxies
             else:
                 count += 1
                 info_logger.warning(json.dumps(proxies) + 'status not 200')
+                del_proxies(proxies)
                 continue
 
         info_logger.warning('try count > 5')
 
     except Exception as e:
         err_logger.error(str(e))
+        del_proxies(proxies)
         print("代理请求失败,耗时:【%.2fs】" % (time.time() - begin))
+        traceback.print_exc()
         return None
+
+
+def del_proxies(proxies):
+    url = 'http://127.0.0.1:5020/ip/del/'
+
+    resp = requests.post(url, data=json.dumps(proxies))
+    print('del proxies:【%s】& resp:' % proxies, resp.content)
 
 
 def crack_captcha(img_b64):
@@ -235,6 +292,17 @@ def crack_captcha(img_b64):
 
 
 if __name__ == '__main__':
-    prc = PhoneRegisterCheck()
-    res = prc.check(13017202140)
-    print(res)
+    import threading
+    def tt():
+        for i in range(1000):
+            prc = PhoneRegisterCheck()
+            res = prc.check(13017202140)
+            print(res)
+
+    def multi():
+        for j in range(5):
+            t = threading.Thread(target=tt)
+            t.start()
+
+    # multi()
+    tt()

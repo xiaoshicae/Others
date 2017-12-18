@@ -9,11 +9,12 @@ import requests
 
 
 def get_task():
-    conn = redis.Redis()
-    phone = conn.rpop('zhifubao_phone')
-    if not phone:
-        return None
-    return phone.decode()
+    return '13017202140'
+    # conn = redis.Redis()
+    # phone = conn.rpop('zhifubao_phone')
+    # if not phone:
+    #     return None
+    # return phone.decode()
 
 
 def push_task(phone):
@@ -88,6 +89,6 @@ def img_query():
 
 
 if __name__ == '__main__':
-    t_num = 1
+    t_num = 3
     multi_thread(t_num)
     # print(img_query())
