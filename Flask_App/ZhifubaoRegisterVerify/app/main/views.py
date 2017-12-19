@@ -5,6 +5,7 @@ import json
 import logging
 import threading
 
+from flask import render_template
 from flask import request
 from flask import send_from_directory
 
@@ -80,6 +81,11 @@ def phone_verify():
     return json.dumps(result)
 
 
+@main.route('/get_ua/<form_token>', methods=['GET', 'POST'])
+def gen_ua(form_token):
+    return render_template('gen_ua.html', form_tk=form_token)
+
+
 @main.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(os.path.abspath('..'), 'static'),
@@ -133,6 +139,7 @@ def worker_closure():
             cls.result = result
 
     return Worker
+
 
 if __name__ == '__main__':
     pass

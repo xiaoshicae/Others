@@ -42,7 +42,7 @@ class PhoneRegisterCheck:
         :return:  表单token & 验证码
         """
 
-        result = {'_form_token': None, 'captcha_code': None, 'failReason': None}
+        result = {'ua': None, '_form_token': None, 'captcha_code': None, 'failReason': None}
 
         url = 'https://accounts.alipay.com/console/dispatch.htm?scene_code=resetQueryPwd&page_type=fullpage&site=1'
         try:
@@ -60,6 +60,16 @@ class PhoneRegisterCheck:
                 result['_form_token'] = _form_token
             else:
                 result['failReason'] = '_form_token未找到'
+                return result
+
+            try:
+                self.driver.get('http://127.0.0.1:5000/get_ua/%s' % _form_token)
+                page_source = self.driver.page_source
+                ua = etree.HTML(page_source).xpath('//*[@id="UA_InputId"]/@value')[0]
+                result['ua'] = ua
+                print("获取新ua【%s】" % ua)
+            except Exception as e:
+                result['failReason'] = '获取ua失败'
                 return result
 
             captcha_url = tree.xpath('//img[@alt="输入验证码"]/@src')
@@ -108,7 +118,7 @@ class PhoneRegisterCheck:
         result['failReason'] = '网络请求错误'
         return result
 
-    def get_check_result(self, _form_token, captcha_code, phone):
+    def get_check_result(self, ua, _form_token, captcha_code, phone):
         """
         :param _form_token:  表单token
         :param captcha_code:  验证码
@@ -134,13 +144,7 @@ class PhoneRegisterCheck:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.101 Safari/537.36'
         }
 
-        ua = ''
-        try:
-            self.driver.get(r"C:\Users\YongHu\Desktop\TMP\tt.html")
-            page_source = self.driver.page_source
-            ua = etree.HTML(page_source).xpath('//*[@id="UA_InputId"]/@value')[0]
-        except Exception as e:
-            print(e)
+
 
         data = {
             'ua': ua,
@@ -185,9 +189,15 @@ class PhoneRegisterCheck:
             result['failReason'] = '重复提交'
             return result
 
-        else:
+        elif tree.xpath('//div[@class="container"]/div[@class="content"]/p[@class="ft-14"]/text()') == ['你正在为账户 ', ' 重置登录密码，请选择重置方式：']:
             result['statusCode'] = 0
             result['registerStatus'] = '号码已注册'
+            return result
+
+        else:
+            print(content)
+            result['statusCode'] = -1
+            result['failReason'] = '解析页面有误'
             return result
 
     def check(self, phone, save_img=False):
@@ -195,6 +205,7 @@ class PhoneRegisterCheck:
 
         captcha_result = self.get_captcha_code()
         _form_token = captcha_result.get('_form_token')
+        ua = captcha_result.get('ua')
         captcha_code = captcha_result.get('captcha_code')
         fail_reason = captcha_result.get('failReason')
 
@@ -203,7 +214,7 @@ class PhoneRegisterCheck:
             result['failReason'] = fail_reason
             return result
 
-        result = self.get_check_result(_form_token, captcha_code, phone)
+        result = self.get_check_result(ua, _form_token, captcha_code, phone)
 
         # --*-- 验证码图片保存 --*--
         if save_img:
@@ -293,16 +304,21 @@ def crack_captcha(img_b64):
 
 if __name__ == '__main__':
     import threading
+
+
     def tt():
         for i in range(1000):
             prc = PhoneRegisterCheck()
-            res = prc.check(13017202140)
+            # res = prc.check(13017202140)
+            res = prc.check(13568838680)
             print(res)
 
-    def multi():
-        for j in range(5):
-            t = threading.Thread(target=tt)
-            t.start()
+
+    # def multi():
+    #     for j in range(5):
+    #         t = threading.Thread(target=tt)
+    #         t.start()
+
 
     # multi()
     tt()

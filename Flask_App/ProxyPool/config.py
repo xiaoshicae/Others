@@ -7,7 +7,7 @@ BASE_DIR = os.path.abspath(os.path.dirname((os.path.realpath(__file__))))
 SPIDER_ID = '6fd7c386444b4ceb9bc558524447a7f4'
 
 # Redis代理过期时间设置
-EXPIRE = 3 * 60
+EXPIRE = 2 * 60
 
 # 日志配置
 LOG_CONFIG = {
