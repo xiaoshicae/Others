@@ -1,15 +1,23 @@
 import copy
 import base64
-import time
 import json
 import logging
 import traceback
+from requests_toolbelt import SSLAdapter
 
 import requests
+# requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':RC4-SHA'
 from lxml import etree
-from selenium import webdriver
 from requests.exceptions import Timeout, ReadTimeout, ProxyError, ConnectionError
+# from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
+from tm import get_proxies2
+from tm import get_proxies3
+# from via_proxy import ViaXunDaiLiProxy as ViaProxy
+from via_proxy import ViaABuYunProxy as ViaProxy
+
+# 禁用安全请求警告
+# requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 info_logger = logging.getLogger("info_log")
 err_logger = logging.getLogger("err_log")
 detail_logger = logging.getLogger("detail_log")
@@ -25,28 +33,46 @@ class PhoneRegisterCheck:
         1 : 号码未注册;
         -1 : 结果异常(验证码错误, 其它错误);
     """
-    driver = webdriver.Chrome(executable_path=r'C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe')
 
     def __init__(self):
         """
             初始化session, 获取IP代理
         """
-        self.session = requests.session()
-        self.proxies = copy.deepcopy(get_proxies())
-        print('Get proxies:【%s】' % self.proxies)
+        # self.session = ViaProxy()
         # self.proxies = None
+        # adapter = SSLAdapter('SSLv23')
+        self.session = requests.Session()
+        # self.session.mount('https://', adapter)
+        # self.proxies = get_proxies()
+        # self.proxies = get_proxies2()
+        self.proxies = get_proxies3()
+
         self.img_data = b''
 
     def get_captcha_code(self):
         """
-        :return:  表单token & 验证码
+        获取验证码 & 表单token
         """
 
         result = {'ua': None, '_form_token': None, 'captcha_code': None, 'failReason': None}
 
-        url = 'https://accounts.alipay.com/console/dispatch.htm?scene_code=resetQueryPwd&page_type=fullpage&site=1'
+        url = 'https://accounts.alipay.com/console/querypwd/logonIdInputReset.htm?site=1&page_type=fullpage&scene_code=resetQueryPwd'
+        # url = 'https://accounts.alipay.com/console/querypwd/logonIdInputReset.htm?site=1&page_type=fullpage&scene_code=resetQueryPwd'
+        headers = {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept-Language': 'zh-CN,zh;q=0.8',
+            'Cache-Control': 'max-age=0',
+            'Connection': 'keep-alive',
+            'Host': 'accounts.alipay.com',
+            'Referer': 'https://auth.alipay.com/login/homeB.htm?redirectType=parent',
+            'Upgrade-Insecure-Requests': '1',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.101 Safari/537.36'
+        }
+        # self.session.headers.update(headers)
         try:
-            resp = self.session.get(url, proxies=self.proxies, timeout=(6.1, 15))
+            # 获取验证码url & 表单token
+            resp = self.session.get(url, proxies=self.proxies, verify=False, timeout=(6.1, 15))
             try:
                 content = resp.content.decode(encoding='GBK')
             except:
@@ -62,16 +88,6 @@ class PhoneRegisterCheck:
                 result['failReason'] = '_form_token未找到'
                 return result
 
-            try:
-                self.driver.get('http://127.0.0.1:5000/get_ua/%s' % _form_token)
-                page_source = self.driver.page_source
-                ua = etree.HTML(page_source).xpath('//*[@id="UA_InputId"]/@value')[0]
-                result['ua'] = ua
-                print("获取新ua【%s】" % ua)
-            except Exception as e:
-                result['failReason'] = '获取ua失败'
-                return result
-
             captcha_url = tree.xpath('//img[@alt="输入验证码"]/@src')
             if captcha_url:
                 captcha_url = captcha_url[0]
@@ -79,7 +95,18 @@ class PhoneRegisterCheck:
                 result['failReason'] = '验证码url未找到'
                 return result
 
-            img_data = self.session.get(captcha_url, proxies=self.proxies, timeout=(6.1, 15)).content
+            headers = {
+                'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept-Language': 'zh-CN,zh;q=0.8',
+                'Connection': 'keep-alive',
+                'Host': 'omeo.alipay.com',
+                'Referer': 'https://accounts.alipay.com/console/querypwd/logonIdInputReset.htm?site=1&page_type=fullpage&scene_code=resetQueryPwd',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.101 Safari/537.3'
+            }
+            self.session.headers.update(headers)
+            # 获取验证码data
+            img_data = self.session.get(captcha_url, proxies=self.proxies, timeout=(6.1, 15), verify=False).content
             self.img_data = img_data
 
             # 第三方验证码接口
@@ -87,9 +114,8 @@ class PhoneRegisterCheck:
             if not img_b64:
                 result['failReason'] = '图片无法转换为base64'
                 return result
-            begin = time.time()
+
             captcha_code = crack_captcha(img_b64)
-            print('本次验证码请求耗时: 【%.2fs】' % (time.time() - begin))
 
             # --*-- 手动输入验证码进行测试 --*--
             # from io import BytesIO
@@ -103,16 +129,15 @@ class PhoneRegisterCheck:
             if not captcha_code:
                 result['failReason'] = '验证码识别错误'
                 return result
+
             result['captcha_code'] = captcha_code
             return result
 
-        except ProxyError as e:
+        except (ProxyError, ConnectionError, Timeout, ReadTimeout) as e:
             print('IP代理错误', e)
-        except ConnectionError as e:
-            print('连接错误', e)
-        except (Timeout, ReadTimeout) as e:
-            print('请求超时', e)
+            traceback.format_exc()
         except Exception as e:
+            err_logger.error('网络请求错误(其它):【%s】' % str(e))
             print('其它错误', traceback.format_exc())
 
         result['failReason'] = '网络请求错误'
@@ -120,10 +145,7 @@ class PhoneRegisterCheck:
 
     def get_check_result(self, ua, _form_token, captcha_code, phone):
         """
-        :param _form_token:  表单token
-        :param captcha_code:  验证码
-        :param phone:   手机号码
-        :return: check 结果
+        传入ua, _form_token, captcha_code, phone等参数,获取验证信息
         """
         result = {'statusCode': None, 'registerStatus': None, 'failReason': None}
 
@@ -143,66 +165,69 @@ class PhoneRegisterCheck:
             'Upgrade-Insecure-Requests': '1',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.101 Safari/537.36'
         }
-
-
-
+        # ua = '189BqFYKOYNNcUuXukRErVNJIN+ErdLIZYCAw==|BaFEKYlxHrxGL49+F7tAKeE=|BKNGQfZ8SK8JOMgjU+Qbd8AlW5k5C/pcd5F6e7M=|A6dcLJtqBKBQaZ02WPoGPsowD6JaPsoyXv5SO51hC6gDOZgyDK5QPpg1WPoAacpnA6JfZpA4V6ZcOZhmWKlXbZprBfUKEd4nS/xo|AqZWJugSYsU4XfsecMkiXusAAck=|AaxJN4AU|AKxJN4AU|D6tTI+0GMtNuQu0LeNwnTPcOfNk+U/wAbMkwQ7EdNf9DfsQ1W/8PNsJpB6VZYZVvUP0FYZVtAaENZMI+VPdcZsdtU/EPYcdqB6VfNpU4XP0AOc9nCPkDZsc5B/YIMsU0WqpVToF4FKNGOI8bGg==|DqhNSvIIZsM6Vu8LZMM6VvMWc9QkVPkIbNUtSO8WZsI7X/ofct4lSfAIZMU8PfU=|DaxVOYB5Ca5LJod/D6lVPod7HqdZMIlxHL1YNf0='
+        ua = get_ua()
         data = {
             'ua': ua,
             '_form_token': _form_token,
             'logonId': phone,
             'picCheckCode': captcha_code
         }
-
+        # self.session.headers.update(headers)
         try:
-            resp = self.session.post(url, proxies=self.proxies, headers=headers, data=data, timeout=(6.1, 15))
+            # 最终验证信息
+            resp = self.session.post(url, proxies=self.proxies, headers=headers, data=data, verify=False, timeout=(6.1, 15))
             content = resp.content.decode(encoding='GBK')
         except Exception as e:
-            print(e)
             result['statusCode'] = -1
             result['failReason'] = '网络请求错误.'
+            print('IP代理请求错误', e)
             return result
+
         tree = etree.HTML(content)
         check = tree.xpath('//div[@class="ui-form-explain pt-5"]/text()')
+
         if check:
             check = check[0].strip()
+
             if check == '请输入正确的验证码':
                 result['statusCode'] = -1
                 result['failReason'] = '验证码识别错误'
-                return result
+
             elif check == '该账户不存在，请重新输入':
                 result['statusCode'] = 1
                 result['registerStatus'] = '号码未注册'
-                return result
+
             else:
                 result['statusCode'] = -1
-                result['failReason'] = '页面解析错误,未找到check标志'
-                return result
+                result['failReason'] = 'check出现未知字符'
+                err_logger.error('check 出现未知字符:【%s】' % check)
 
         elif tree.xpath('//div[@class="ui-tipbox-content"]/h3/text()') == ['您暂时不能访问此页面，请稍后再试']:
             result['statusCode'] = -1
-            result['failReason'] = '访问频率过快,IP被禁'
+            result['failReason'] = '代理IP被禁'
             del_proxies(self.proxies)
-            return result
 
         elif tree.xpath('//div[@class="ui-tipbox-content"]/h3/text()') == ['对不起，请不要重复提交请求。 请回到原始页面重新刷新']:
             result['statusCode'] = -1
             result['failReason'] = '重复提交'
-            return result
 
-        elif tree.xpath('//div[@class="container"]/div[@class="content"]/p[@class="ft-14"]/text()') == ['你正在为账户 ', ' 重置登录密码，请选择重置方式：']:
+        elif tree.xpath('//div[@class="container"]/div[@class="content"]/p[@class="ft-14"]/text()') == ['你正在为账户 ',
+                                                                                                        ' 重置登录密码，请选择重置方式：']:
             result['statusCode'] = 0
             result['registerStatus'] = '号码已注册'
-            return result
 
         else:
-            print(content)
             result['statusCode'] = -1
             result['failReason'] = '解析页面有误'
-            return result
+            err_logger.error('页面解析错误,content为:【%s】' % content)
 
-    def check(self, phone, save_img=False):
+        return result
+
+    def main(self, phone, save_img=False):
         result = {'statusCode': None, 'registerStatus': None, 'failReason': None}
 
+        # 获取并破解验证码
         captcha_result = self.get_captcha_code()
         _form_token = captcha_result.get('_form_token')
         ua = captcha_result.get('ua')
@@ -214,6 +239,7 @@ class PhoneRegisterCheck:
             result['failReason'] = fail_reason
             return result
 
+        # 传入ua, _form_token, captcha_code, phone等参数,获取验证信息
         result = self.get_check_result(ua, _form_token, captcha_code, phone)
 
         # --*-- 验证码图片保存 --*--
@@ -228,7 +254,6 @@ class PhoneRegisterCheck:
             else:
                 file_name = 'error_' + str(captcha_code) + '_' + str(u) + '.png'
                 file = os.path.join(folder, 'images', 'error', file_name)
-                print('error captcha ... ')
             with open(file, 'wb') as f:
                 f.write(self.img_data)
         # --*-- 验证码图片保存end --*--
@@ -241,54 +266,40 @@ class PhoneRegisterCheck:
             img_b64 = base64.encodebytes(img_data).decode()
             return img_b64
         except Exception as e:
-            print(e)
-            return None
+            err_logger.error('图片base64编码错误【%s】' % str(e))
 
 
 def get_proxies():
-    begin = time.time()
     url = 'http://127.0.0.1:5020/ip/get/'
-    # url = 'http://192.168.30.248:8080/get/'
     proxies = ''
-    try:
-        count = 0
-        while count < 5:
+    count = 0
+    while count < 5:
+        try:
             content = requests.get(url, timeout=3.1).content
             info = json.loads(content)
             proxies = json.loads(info.get('proxies', None))
             ping_url = 'https://www.alipay.com/'
-            status_code = 404
-            try:
-                status_code = requests.get(ping_url, timeout=3.1, proxies=proxies).status_code
-            except:
-                print('代理请求失败')
-                del_proxies(proxies)
-            # status_code = 200
+            status_code = requests.get(ping_url, timeout=3.1, proxies=proxies).status_code
             if status_code == 200:
                 info_logger.info(json.dumps(proxies) + 'status 200 ok')
-                print("代理请求成功,耗时:【%.2fs】" % (time.time() - begin))
                 return proxies
             else:
                 count += 1
-                info_logger.warning(json.dumps(proxies) + 'status not 200')
+                err_logger.error(json.dumps(proxies) + 'status not 200')
                 del_proxies(proxies)
-                continue
 
-        info_logger.warning('try count > 5')
+        except Exception as e:
+            count += 1
+            del_proxies(proxies)
+            err_logger.error('代理连接测试失败, ' + str(e))
 
-    except Exception as e:
-        err_logger.error(str(e))
-        del_proxies(proxies)
-        print("代理请求失败,耗时:【%.2fs】" % (time.time() - begin))
-        traceback.print_exc()
-        return None
+    info_logger.error('请求代理次数大于5次')
 
 
 def del_proxies(proxies):
     url = 'http://127.0.0.1:5020/ip/del/'
-
     resp = requests.post(url, data=json.dumps(proxies))
-    print('del proxies:【%s】& resp:' % proxies, resp.content)
+    return resp
 
 
 def crack_captcha(img_b64):
@@ -298,27 +309,35 @@ def crack_captcha(img_b64):
         "imgBase64": img_b64
     }
     content = requests.post(url, data=json.dumps(data)).content
-
     return json.loads(content)['captcha']
 
 
-if __name__ == '__main__':
-    import threading
+def get_ua():
+    import redis
+    conn = redis.Redis(host='localhost', port=6379, db=3)
+    ua = conn.keys()
+    if not ua:
+        err_logger.error("redis无可用UA")
+        return
+    ua = conn.randomkey()
+    conn.delete(ua)
+    return ua.decode()
 
+
+if __name__ == '__main__':
 
     def tt():
-        for i in range(1000):
+        right = 0
+        for i in range(1, 10000):
             prc = PhoneRegisterCheck()
-            # res = prc.check(13017202140)
-            res = prc.check(13568838680)
+            # res = prc.main(13017202140)
+            res = prc.main(13568838680)
+            s = res.get('statusCode')
+            if s != -1:
+                right += 1
+
             print(res)
+            print('第【%d】次, 成功率为:【%.2f%%】' % (i, (right / i * 100)))
 
 
-    # def multi():
-    #     for j in range(5):
-    #         t = threading.Thread(target=tt)
-    #         t.start()
-
-
-    # multi()
     tt()

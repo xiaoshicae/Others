@@ -125,7 +125,7 @@ def worker_closure():
         def run(self):
             while not Worker.stop_flag:
                 prc = PhoneRegisterCheck()
-                check_result = prc.check(self.phone)
+                check_result = prc.main(self.phone)
                 if check_result['statusCode'] != -1:
                     self.stop()
                     self.store_result(check_result)

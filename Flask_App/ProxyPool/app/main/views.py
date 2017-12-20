@@ -33,7 +33,6 @@ def get():
     try:
         proxies_list = [k.decode() for k in conn.keys()]
         proxies = choice(proxies_list)
-        print('new proxies:【%s】' % proxies)
         total_num = len(proxies_list)
         items['proxies'] = proxies
         items['totalNum'] = total_num
@@ -67,20 +66,10 @@ def del_proxies():
     proxies = json.loads(proxies)
     if isinstance(proxies, dict):
         proxies = json.dumps(proxies)
-    print(proxies)
-    # proxy = json.dumps(proxies).get('http', '')
-    # print(proxies)
-    # proxies = "{\"http\": \"%s\", \"https\": \"%s\"}" % (proxy, proxy)
-    # "{\"http\": \"http://222.77.123.145:27162\", \"https\": \"http://222.77.123.145:27162\"}"
-    # "{\"http\": \"http://1.199.195.185:49114\", \"https\": \"http://1.199.195.185:49114\"}"
-    # data = json.loads(request.get_data())
-    # proxies = data.get('proxies', '')
-    # proxies = json.dumps(proxies)
 
     conn = redis.Redis(host='localhost', port='6379', db=1)
     try:
         status = conn.delete(proxies)
-        print(status)
         return json.dumps({'status': status})
     except Exception as e:
         err_logger.error(str(e))

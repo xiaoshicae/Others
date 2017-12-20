@@ -43,6 +43,7 @@ def store_proxies(proxies):
         if not duplicate_check:
             conn.setex(proxies, 1, time=EXPIRE)
             logging.info('New proxies: ' + str(proxies))
+            print('New proxies: ' + str(proxies))
         else:
             logging.info('Already exist proxies: ' + str(proxies))
     else:

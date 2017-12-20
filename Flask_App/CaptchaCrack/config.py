@@ -1,11 +1,15 @@
 # --*-- encoding:utf-8 --*--
 import os
 
+
 BASE_DIR = os.path.abspath(os.path.dirname((os.path.realpath(__file__))))
 
+
+# 若采用第三方验证码接口,请配置如下信息
 # 验证码接口配置(昆明秀派科技有限公司)
 SHOWAPI_APPID = "50965"  # showapi_appid 从个人中心>我的接口>我的应用 中获取
 SHOWAPI_SIGN = "a3e4fe91d89046c2ab3feb51fcade122"  # showapi_sign 从个人中心>我的接口>我的应用 中获取
+
 
 # 日志配置
 LOG_CONFIG = {
