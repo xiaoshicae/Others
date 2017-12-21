@@ -37,32 +37,45 @@ class PhoneRegisterCheck:
         1 : 号码未注册;
         -1 : 结果异常(验证码错误, 其它错误);
     """
-    driver = webdriver.Chrome(executable_path='C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe')
 
     def __init__(self):
         """
             初始化session, 获取IP代理
         """
+
         self.session = requests.Session()
-        proxy = get_proxies3()
-        self.proxies = {
-            'http': 'http://%s' % proxy,
-            'https': 'http://%s' % proxy
-        }
+        # proxy = get_proxies3()
+        # self.proxies = {
+        #     'http': 'http://%s' % proxy,
+        #     'https': 'http://%s' % proxy
+        # }
+        "{'http': 'http://115.212.126.201:4399', 'https': 'http://115.212.126.201:4399'}"
+        proxy = '49.71.107.134:43281212'
+        self.proxies = {'http': 'http://49.71.107.134:4328', 'https': 'http://49.71.107.134:4328'}
+
         self.cookies = {}
         self.img_data = b''
-        proxy = Proxy(
+        proxy2 = Proxy(
             {
                 'proxyType': ProxyType.MANUAL,
-                'httpProxy': proxy  # 代理ip和端口
+                'httpProxy': proxy,  # 代理ip和端口
+                'sslProxy': proxy,
+                'ftpProxy': proxy,
+                'noProxy': ''
             }
         )
-        # 新建一个“期望技能”，哈哈
+        # 新建一个“期望技能”,
         desired_capabilities = DesiredCapabilities.CHROME.copy()
-        # 把代理ip加入到技能中
-        proxy.add_to_capabilities(desired_capabilities)
+        proxy2.add_to_capabilities(desired_capabilities)
+
+        self.driver = webdriver.Chrome(
+            executable_path='C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe',
+            desired_capabilities=desired_capabilities
+            # proxy=proxy
+        )
+        self.driver.delete_all_cookies()
         # 新建一个会话，并把技能传入
-        self.driver.start_session(desired_capabilities)
+        # self.driver.start_session(desired_capabilities)
         self.driver.maximize_window()
 
     def get_captcha_code(self):
@@ -178,8 +191,19 @@ class PhoneRegisterCheck:
         # self.session.headers.update(headers)
         try:
             # 最终验证信息
-            resp = requests.post(url, data=data, proxies=self.proxies, cookies=self.cookies, headers=headers, timeout=(3.1, 15))
-            content = resp.content.decode(encoding='GBK')
+            account_input = self.driver.find_element_by_id('J-accName')
+            captcha_input = self.driver.find_element_by_id('J-checkcode')
+            account_input.send_keys(phone)
+            captcha_input.send_keys(captcha_code)
+
+            submit_input = self.driver.find_element_by_xpath('//input[@type="submit"]')
+            submit_input.click()
+
+            import time
+            time.sleep(2)
+            content = self.driver.page_source
+            # resp = requests.post(url, data=data, proxies=self.proxies, cookies=self.cookies, headers=headers, timeout=(3.1, 15))
+            # content = resp.content.decode(encoding='GBK')
         except Exception as e:
             result['statusCode'] = -1
             result['failReason'] = '网络请求错误.'
@@ -208,7 +232,7 @@ class PhoneRegisterCheck:
         elif tree.xpath('//div[@class="ui-tipbox-content"]/h3/text()') == ['您暂时不能访问此页面，请稍后再试']:
             result['statusCode'] = -1
             result['failReason'] = '代理IP被禁'
-            del_proxies(self.proxies)
+            # del_proxies(self.proxies)
 
         elif tree.xpath('//div[@class="ui-tipbox-content"]/h3/text()') == ['对不起，请不要重复提交请求。 请回到原始页面重新刷新']:
             result['statusCode'] = -1
@@ -228,7 +252,8 @@ class PhoneRegisterCheck:
 
     def main(self, phone, save_img=False):
         result = {'statusCode': None, 'registerStatus': None, 'failReason': None}
-
+        self.driver.get('http://blog.csdn.net/after_you/article/details/69945550')
+        print(self.driver.page_source)
         # 获取并破解验证码
         captcha_result = self.get_captcha_code()
         _form_token = captcha_result.get('_form_token')
@@ -239,6 +264,7 @@ class PhoneRegisterCheck:
         if not _form_token or not captcha_code:
             result['statusCode'] = -1
             result['failReason'] = fail_reason
+            self.driver.close()
             return result
 
         # 传入ua, _form_token, captcha_code, phone等参数,获取验证信息
@@ -259,7 +285,7 @@ class PhoneRegisterCheck:
             with open(file, 'wb') as f:
                 f.write(self.img_data)
         # --*-- 验证码图片保存end --*--
-
+        self.driver.close()
         return result
 
     @staticmethod
@@ -288,20 +314,20 @@ def get_proxies():
             else:
                 count += 1
                 err_logger.error(json.dumps(proxies) + 'status not 200')
-                del_proxies(proxies)
+                # del_proxies(proxies)
 
         except Exception as e:
             count += 1
-            del_proxies(proxies)
+            # del_proxies(proxies)
             err_logger.error('代理连接测试失败, ' + str(e))
 
     info_logger.error('请求代理次数大于5次')
 
 
-def del_proxies(proxies):
-    url = 'http://127.0.0.1:5020/ip/del/'
-    resp = requests.post(url, data=json.dumps(proxies))
-    return resp
+# def del_proxies(proxies):
+#     url = 'http://127.0.0.1:5020/ip/del/'
+#     resp = requests.post(url, data=json.dumps(proxies))
+#     return resp
 
 
 def crack_captcha(img_b64):

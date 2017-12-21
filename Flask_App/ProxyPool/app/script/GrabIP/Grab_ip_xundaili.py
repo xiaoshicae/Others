@@ -46,8 +46,10 @@ def store_proxies(proxies):
             print('New proxies: ' + str(proxies))
         else:
             logging.info('Already exist proxies: ' + str(proxies))
+            print('Already exist proxies: ' + str(proxies))
     else:
         logging.error('Can not connect alipay.com -- proxies: ' + str(proxies))
+        print('Can not connect alipay.com -- proxies: ' + str(proxies))
 
 
 def download_proxies():
@@ -83,6 +85,7 @@ def main():
         try:
             begin = time.time()
             proxies_list = download_proxies()
+            # proxies_list = download_jd_proxies()
             total = len(proxies_list)
             for i in range(total):
                 proxies = proxies_list[i]
@@ -96,8 +99,38 @@ def main():
                 time.sleep(12 - (end - begin))
         except Exception as e:
             logging.error('内部错误: ' + str(e))
+            print('内部错误: ' + str(e))
             time.sleep(10.5)
 
+
+def download_jd_proxies():
+    import wx_sdk
+    url = 'https://way.jd.com/jisuapi/proxy'
+    params = {
+        'num': '5',
+        'area': '',
+        'areaex': '',
+        'port': '8080,5000',
+        'portex': '3306',
+        'protocol': '1',
+        'type': '1',
+        'appkey': '73c7fe53401ea0f9a94871455e805a7b'
+    }
+
+    resp = wx_sdk.wx_post_req(url, params)
+    print(resp.content.decode())
+
+    content = resp.json().get('result').get('result').get('list')
+    proxies_list = []
+    for proxy in content:
+        ip = proxy['ip']
+        proxies = {
+            'http': 'http://%s' % ip,
+            'https': 'http://%s' % ip,
+        }
+        proxies_list.append(proxies)
+    print('proxies_list: ', proxies_list)
+    return proxies_list
 
 if __name__ == '__main__':
     main()

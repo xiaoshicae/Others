@@ -1,23 +1,21 @@
-import copy
 import base64
+import random
 import json
 import logging
 import traceback
-from requests_toolbelt import SSLAdapter
 
 import requests
-# requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':RC4-SHA'
 from lxml import etree
 from requests.exceptions import Timeout, ReadTimeout, ProxyError, ConnectionError
-# from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 from tm import get_proxies2
 from tm import get_proxies3
-# from via_proxy import ViaXunDaiLiProxy as ViaProxy
 from via_proxy import ViaABuYunProxy as ViaProxy
+from user_agents import USER_AGENT_LIST
 
 # 禁用安全请求警告
-# requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 info_logger = logging.getLogger("info_log")
 err_logger = logging.getLogger("err_log")
 detail_logger = logging.getLogger("detail_log")
@@ -40,12 +38,14 @@ class PhoneRegisterCheck:
         """
         # self.session = ViaProxy()
         # self.proxies = None
-        # adapter = SSLAdapter('SSLv23')
         self.session = requests.Session()
-        # self.session.mount('https://', adapter)
-        # self.proxies = get_proxies()
+        self.proxies = get_proxies()
+        # self.proxies = {'http': 'http://123.186.228.201:2341', 'https': 'http://123.186.228.201:2341'}
+        print('new proxies: ', self.proxies)
         # self.proxies = get_proxies2()
-        self.proxies = get_proxies3()
+        # self.proxies = get_proxies3()
+        self.user_agent = random.choice(USER_AGENT_LIST)
+        print('new user_agent, ', self.user_agent)
 
         self.img_data = b''
 
@@ -70,9 +70,11 @@ class PhoneRegisterCheck:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.101 Safari/537.36'
         }
         # self.session.headers.update(headers)
+
+        header = {'User-Agent': self.user_agent}
         try:
             # 获取验证码url & 表单token
-            resp = self.session.get(url, proxies=self.proxies, verify=False, timeout=(6.1, 15))
+            resp = self.session.get(url, proxies=self.proxies, headers=header, verify=False, timeout=(6.1, 15))
             try:
                 content = resp.content.decode(encoding='GBK')
             except:
@@ -104,9 +106,11 @@ class PhoneRegisterCheck:
                 'Referer': 'https://accounts.alipay.com/console/querypwd/logonIdInputReset.htm?site=1&page_type=fullpage&scene_code=resetQueryPwd',
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.101 Safari/537.3'
             }
-            self.session.headers.update(headers)
+            # self.session.headers.update(headers)
             # 获取验证码data
-            img_data = self.session.get(captcha_url, proxies=self.proxies, timeout=(6.1, 15), verify=False).content
+            header = {'User-Agent': self.user_agent}
+            img_data = self.session.get(captcha_url, proxies=self.proxies, headers=header, timeout=(6.1, 15),
+                                        verify=False).content
             self.img_data = img_data
 
             # 第三方验证码接口
@@ -174,9 +178,11 @@ class PhoneRegisterCheck:
             'picCheckCode': captcha_code
         }
         # self.session.headers.update(headers)
+        header = {'User-Agent': self.user_agent}
         try:
             # 最终验证信息
-            resp = self.session.post(url, proxies=self.proxies, headers=headers, data=data, verify=False, timeout=(6.1, 15))
+            resp = self.session.post(url, proxies=self.proxies, headers=header, data=data, verify=False,
+                                     timeout=(6.1, 15))
             content = resp.content.decode(encoding='GBK')
         except Exception as e:
             result['statusCode'] = -1
