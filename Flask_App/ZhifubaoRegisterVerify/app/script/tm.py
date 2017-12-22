@@ -51,7 +51,11 @@ def get_proxies3():
 
 
 def get_proxies4():
-    url = 'http://webapi.http.zhimacangku.com/getip?num=1&type=2&pro=0&city=0&yys=0&port=11&pack=9512&ts=0&ys=0&cs=0&lb=1&sb=0&pb=4&mr=2&regions='
+    # url = 'http://webapi.http.zhimacangku.com/getip?num=1&type=2&pro=&city=0&yys=0&port=1&pack=9512&ts=0&ys=0&cs=0&lb=1&sb=0&pb=4&mr=1&regions='
+    # url = 'http://webapi.http.zhimacangku.com/getip?num=1&type=2&pro=&city=0&yys=0&port=11&pack=9512&ts=0&ys=0&cs=0&lb=1&sb=0&pb=4&mr=1&regions='
+    # url = 'http://webapi.http.zhimacangku.com/getip?num=1&type=2&pro=&city=0&yys=0&port=2&pack=9512&ts=0&ys=0&cs=0&lb=1&sb=0&pb=4&mr=1&regions='
+    # url = 'http://webapi.http.zhimacangku.com/getip?num=1&type=2&pro=&city=0&yys=0&port=11&pack=9512&ts=0&ys=0&cs=0&lb=1&sb=0&pb=5&mr=1&regions='
+    url = 'http://webapi.http.zhimacangku.com/getip?num=1&type=2&pro=&city=0&yys=0&port=1&pack=9512&ts=0&ys=0&cs=0&lb=1&sb=0&pb=5&mr=1&regions='
     resp = requests.get(url).json()
     print(resp)
     ip = resp.get('data')[0].get('ip')

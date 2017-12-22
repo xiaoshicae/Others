@@ -50,8 +50,8 @@ class PhoneRegisterCheck:
         #     'https': 'http://%s' % proxy
         # }
         "{'http': 'http://115.212.126.201:4399', 'https': 'http://115.212.126.201:4399'}"
-        proxy = '49.71.107.134:43281212'
-        self.proxies = {'http': 'http://49.71.107.134:4328', 'https': 'http://49.71.107.134:4328'}
+        proxy = '39.66.12.207:52136'
+        self.proxies = {'http': 'http://39.66.12.207:52136', 'https': 'http://39.66.12.207:52136'}
 
         self.cookies = {}
         self.img_data = b''
@@ -66,13 +66,27 @@ class PhoneRegisterCheck:
         )
         # 新建一个“期望技能”,
         desired_capabilities = DesiredCapabilities.CHROME.copy()
+        # desired_capabilities = DesiredCapabilities.PHANTOMJS.copy()
         proxy2.add_to_capabilities(desired_capabilities)
+        desired_capabilities["phantomjs.page.settings.userAgent"] = (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:25.0) Gecko/20100101 Firefox/25.0 "
+        )
+        print('desired_capabilities: ', desired_capabilities)
 
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument('--proxy-server=http://183.160.242.103:52644')
         self.driver = webdriver.Chrome(
-            executable_path='C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe',
-            desired_capabilities=desired_capabilities
+            executable_path=r'C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe',
+            # desired_capabilities=desired_capabilities,
+            chrome_options=chrome_options
             # proxy=proxy
         )
+
+        # self.driver = webdriver.PhantomJS(
+        #     executable_path=r'E:\Program Files\Phantomjs\phantomjs-2.1.1-windows\bin\phantomjs.exe',
+        #     # desired_capabilities=desired_capabilities,
+        #     # proxy=proxy
+        # )
         self.driver.delete_all_cookies()
         # 新建一个会话，并把技能传入
         # self.driver.start_session(desired_capabilities)
@@ -89,6 +103,7 @@ class PhoneRegisterCheck:
         try:
             # 获取验证码url & 表单token
             self.driver.get(url)
+            # print('content: \n',self.driver.page_source)
             cookies = self.driver.get_cookies()
 
             for item in cookies:
@@ -107,9 +122,10 @@ class PhoneRegisterCheck:
                 result['failReason'] = '_form_token未找到'
                 return result
 
+            # print(content)
             ua = tree.xpath('//*[@id="UA_InputId"]/@value')
             if ua:
-                ua = ua[0]
+                ua = ua[-1]
                 result['ua'] = ua
             else:
                 result['failReason'] = 'ua未找到'
@@ -181,13 +197,14 @@ class PhoneRegisterCheck:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.101 Safari/537.36'
         }
         # ua = '189BqFYKOYNNcUuXukRErVNJIN+ErdLIZYCAw==|BaFEKYlxHrxGL49+F7tAKeE=|BKNGQfZ8SK8JOMgjU+Qbd8AlW5k5C/pcd5F6e7M=|A6dcLJtqBKBQaZ02WPoGPsowD6JaPsoyXv5SO51hC6gDOZgyDK5QPpg1WPoAacpnA6JfZpA4V6ZcOZhmWKlXbZprBfUKEd4nS/xo|AqZWJugSYsU4XfsecMkiXusAAck=|AaxJN4AU|AKxJN4AU|D6tTI+0GMtNuQu0LeNwnTPcOfNk+U/wAbMkwQ7EdNf9DfsQ1W/8PNsJpB6VZYZVvUP0FYZVtAaENZMI+VPdcZsdtU/EPYcdqB6VfNpU4XP0AOc9nCPkDZsc5B/YIMsU0WqpVToF4FKNGOI8bGg==|DqhNSvIIZsM6Vu8LZMM6VvMWc9QkVPkIbNUtSO8WZsI7X/ofct4lSfAIZMU8PfU=|DaxVOYB5Ca5LJod/D6lVPod7HqdZMIlxHL1YNf0='
-        # ua = get_ua()
+        ua = get_ua()
         data = {
             'ua': ua,
             '_form_token': _form_token,
             'logonId': phone,
             'picCheckCode': captcha_code
         }
+        # print(data)
         # self.session.headers.update(headers)
         try:
             # 最终验证信息
@@ -252,8 +269,6 @@ class PhoneRegisterCheck:
 
     def main(self, phone, save_img=False):
         result = {'statusCode': None, 'registerStatus': None, 'failReason': None}
-        self.driver.get('http://blog.csdn.net/after_you/article/details/69945550')
-        print(self.driver.page_source)
         # 获取并破解验证码
         captcha_result = self.get_captcha_code()
         _form_token = captcha_result.get('_form_token')

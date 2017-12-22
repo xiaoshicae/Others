@@ -39,8 +39,9 @@ class PhoneRegisterCheck:
         # self.session = ViaProxy()
         # self.proxies = None
         self.session = requests.Session()
-        self.proxies = get_proxies()
-        # self.proxies = {'http': 'http://123.186.228.201:2341', 'https': 'http://123.186.228.201:2341'}
+        self.session.verify = False
+        # self.proxies = get_proxies()
+        self.proxies = {'http': 'http://182.35.24.208:57889', 'https': 'http://182.35.24.208:57889'}
         print('new proxies: ', self.proxies)
         # self.proxies = get_proxies2()
         # self.proxies = get_proxies3()
@@ -145,6 +146,18 @@ class PhoneRegisterCheck:
             print('其它错误', traceback.format_exc())
 
         result['failReason'] = '网络请求错误'
+
+        url = 'https://kcart.alipay.com/web/bi.do?ref=https%3A%2F%2Fauth.alipay.com%2Flogin%2FhomeB.htm%3FredirectType%3Dparent&pg=https%3A%2F%2Faccounts.alipay.com%2Fconsole%2Fquerypwd%2FlogonIdInputReset.htm%3Fsite%3D1%26page_type%3Dfullpage%26scene_code%3DresetQueryPwd&screen=1920x1080&color=-&BIProfile=page&sc=24-bit&utmhn=accounts.alipay.com&_clnt=windows%2F10.0%7Cwebkit%2F537.36%7Cchrome%2F60.0.3112.101%7Cpc%2F-1&r=0.24691073108005934&v=1.1'
+        self.session.get(url)
+        url = 'https://kcart.alipay.com/web/bi.do?ref=https%3A%2F%2Faccounts.alipay.com%2Fconsole%2Fquerypwd%2FlogonIdInputReset.htm&pg=https%3A%2F%2Faccounts.alipay.com%2Fconsole%2Fquerypwd%2FlogonIdInputReset.htm%3Fseed%3DJFindPwdForm-JAccName&BIProfile=clk&r=0.724563508159787&v=1.1 '
+        self.session.get(url)
+        url = 'https://i.alipayobjects.com/common/favicon/favicon.ico'
+        self.session.get(url)
+        url = 'https://kcart.alipay.com/web/bi.do?ref=https%3A%2F%2Faccounts.alipay.com%2Fconsole%2Fquerypwd%2FlogonIdInputReset.htm%3Fseed%3DJFindPwdForm-JAccName&pg=https%3A%2F%2Faccounts.alipay.com%2Fconsole%2Fquerypwd%2FlogonIdInputReset.htm%3Fseed%3DJFindPwdForm-JCheckcode&BIProfile=clk&r=0.9570129756123569&v=1.1 '
+        self.session.get(url)
+        url = 'https://kcart.alipay.com/web/bi.do?ref=https%3A%2F%2Faccounts.alipay.com%2Fconsole%2Fquerypwd%2FlogonIdInputReset.htm%3Fseed%3DJFindPwdForm-JCheckcode&pg=https%3A%2F%2Faccounts.alipay.com%2Fconsole%2Fquerypwd%2FlogonIdInputReset.htm%3Fseed%3DJFindPwdForm-btn&BIProfile=clk&r=0.48315649114203274&v=1.1'
+        self.session.get(url)
+
         return result
 
     def get_check_result(self, ua, _form_token, captcha_code, phone):
@@ -212,7 +225,7 @@ class PhoneRegisterCheck:
         elif tree.xpath('//div[@class="ui-tipbox-content"]/h3/text()') == ['您暂时不能访问此页面，请稍后再试']:
             result['statusCode'] = -1
             result['failReason'] = '代理IP被禁'
-            del_proxies(self.proxies)
+            # del_proxies(self.proxies)
 
         elif tree.xpath('//div[@class="ui-tipbox-content"]/h3/text()') == ['对不起，请不要重复提交请求。 请回到原始页面重新刷新']:
             result['statusCode'] = -1
@@ -292,11 +305,11 @@ def get_proxies():
             else:
                 count += 1
                 err_logger.error(json.dumps(proxies) + 'status not 200')
-                del_proxies(proxies)
+                # del_proxies(proxies)
 
         except Exception as e:
             count += 1
-            del_proxies(proxies)
+            # del_proxies(proxies)
             err_logger.error('代理连接测试失败, ' + str(e))
 
     info_logger.error('请求代理次数大于5次')
