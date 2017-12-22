@@ -20,4 +20,5 @@ venv
 
 *.log
 
-# *.hdf5
+*.hdf5
+! /Flask_App/CaptchaCrack/app/script/KerasCaptchaCrack/model_parameters/weights_firts_d.37.hdf5
