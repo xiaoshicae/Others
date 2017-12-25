@@ -10,7 +10,8 @@ from flask import request
 from flask import send_from_directory
 
 from . import main
-from ..script.PhoneRegisterCheck import PhoneRegisterCheck
+# from ..script.PhoneRegisterCheck import PhoneRegisterCheck
+from ..script.ViaSelenium import PhoneRegisterCheck
 
 
 info_logger = logging.getLogger("info_log")
@@ -69,12 +70,12 @@ def phone_verify():
 
     result['phone'] = phone
 
-    check_result = get_result(phone)
-    #
-    if not check_result:
-        check_result = {'statusCode': -1, 'registerStatus': None, 'failReason': '请求超时'}
-    # prc = PhoneRegisterCheck()
-    # check_result = prc.check(phone)
+    # check_result = get_result(phone)
+    # #
+    # if not check_result:
+    #     check_result = {'statusCode': -1, 'registerStatus': None, 'failReason': '请求超时'}
+    prc = PhoneRegisterCheck()
+    check_result = prc.main(phone)
     result['checkResult'] = check_result
 
     info_logger.info(json.dumps(result))

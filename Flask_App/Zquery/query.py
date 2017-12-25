@@ -87,6 +87,18 @@ def multi_thread(t_num):
         t.start()
 
 
+def phone_check(phone):
+    url = 'http://127.0.0.1:5000/phone/register/verify/'
+    data = {
+        "serialNum": 'reg123',
+        "phone": str(phone)
+    }
+    resp = requests.post(url, data=json.dumps(data))
+    content = resp.content
+
+    print(json.loads(content))
+
 if __name__ == '__main__':
-    t_num = 1
-    multi_thread(t_num)
+    # t_num = 1
+    # multi_thread(t_num)
+    phone_check(13568838680)
