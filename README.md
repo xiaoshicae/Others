@@ -18,7 +18,12 @@
     * Keras cnn+rnn模型
     * 第三方接口标记初始样本(约2W张)
     * 识别率90%以上
-    
+
+* ### SSD(TensorFlow目标检测)
+    * 基于TensorFlow
+    * 常用的目标检测有:rnn、faster-rnn、yolo、ssd等(ssd比faster-rnn效率高、比yolo准确率高);
+    * 检测出图片中的人、车、椅子等特定物体
+    * 基于该模型可以改造成识别文字位置
 
 ## License
 [Apache License 2.0](LICENSE)
