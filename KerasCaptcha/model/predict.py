@@ -1,25 +1,28 @@
-# --*-- coding: utf-8 --*--
-import importlib
-import os
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# @Time    : 2019/3/4 15:11
+# @Email   : Zhuangshui@qiyi.com
+# @Desc    :
+
+import json
 import time
 import numpy as np
 import keras.backend as K
 from PIL import Image
 
-
-model_module = importlib.import_module('model')
-config_module = importlib.import_module('config')
+from model.keras_model import get_ssd_model
+from config import *
 
 
 def decode(y):
-    characters = config_module.CHARACTERS + ' '
+    characters = CHARACTERS + ' '
     y = np.argmax(np.array(y), axis=2)[:, 0]
     return ''.join([characters[x] for x in y])
 
 
 def predict(model, img_data):
-    model.load_weights(os.path.join(config_module.BASE_DIR, 'model_parameter', 'weights_first.7.hdf5'))
-    characters2 = config_module.CHARACTERS + ' '
+    model.load_weights(os.path.join(BASE_DIR, 'model_parameter', 'weights_first.7.hdf5'))
+    characters2 = CHARACTERS + ' '
 
     X = img_data
     X = np.expand_dims(X, 0)
@@ -34,7 +37,7 @@ def predict(model, img_data):
 
 
 def main(img):
-    base_model, model = model_module.model()
+    base_model, model = get_ssd_model()
     img_data = Image.open(img)
     # img_data.resize((80, 170))
     img_data = np.array(img_data).transpose((1, 0, 2))
@@ -43,14 +46,14 @@ def main(img):
     return out2
 
 
-def verify(times):
-    characters2 = config_module.CHARACTERS + ' '
-    base_model, model = model_module.model()
-    # base_model.load_weights(r'C:\Users\YongHu\Desktop\TMP\model_parameter\weights_firts_d.%s.hdf5' % str(times).zfill(2))
-    base_model.load_weights(r'C:\Users\YongHu\Desktop\TMP\p2\weights_firts_c.%s.hdf5' % str(times).zfill(2))
+def verify(times, model_params_dir, test_captcha_dir):
+    characters2 = CHARACTERS + ' '
+    base_model, model = get_ssd_model()
 
-    folder = r'C:\Users\YongHu\Desktop\TMP\data\test2'
-    img_list = os.listdir(folder)
+    base_model.load_weights(os.path.join(model_params_dir, 'weight_first.{}.hdf5'.format(str(times).zfill(2))))
+
+    # folder = r'F:\WorkSpace\others-master\KerasCaptcha\data\captchas\test'
+    img_list = os.listdir(test_captcha_dir)
 
     count = 0
     ttl = 0
@@ -59,7 +62,7 @@ def verify(times):
         ttl += 1
         y_true = i.split('_')[0]
 
-        img = os.path.join(folder, i)
+        img = os.path.join(test_captcha_dir, i)
         img_data = Image.open(img)
         img_data = np.array(img_data).transpose((1, 0, 2))
         X = img_data
@@ -76,26 +79,25 @@ def verify(times):
             print('img【%s】error, y_true: 【%s】, y_predict: 【%s】' % (i, y_true, y_predict))
 
     print('正确率为: %s' % str(count / ttl))
-    print('共花费【%s】秒' % str(time.time()-begin))
+    print('共花费【%s】秒' % str(time.time() - begin))
     del base_model, model
     return {'times': times, 'accuracy': count / ttl}
 
-if __name__ == '__main__':
 
-    import argparse
+def captcha_crack_test():
+    """验证码识别测试"""
+    model_params_dir = r'F:\WorkSpace\others-master\KerasCaptcha\model\model_parameters'
+    test_captcha_dir = r'F:\WorkSpace\others-master\KerasCaptcha\data\captchas\test'
 
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('-t', '--times', type=int, default=1)  # 输入其实轮次
-    args = parser.parse_args()
-    times = int(args.times)
-
-    import json
-    f = open('accuracy_d.log', 'a', encoding='utf-8')
+    f = open('captcha_crack_test.log', 'a', encoding='utf-8')
     for i in range(70, 91):
-        r = verify(i)
+        r = verify(i, model_params_dir, test_captcha_dir)
         print(r)
-        f.write(json.dumps(r)+'\n')
+        f.write(json.dumps(r) + '\n')
         f.flush()
     f.close()
     print('down!...')
+
+
+if __name__ == '__main__':
+    captcha_crack_test()

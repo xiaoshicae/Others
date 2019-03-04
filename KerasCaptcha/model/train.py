@@ -1,5 +1,9 @@
-import importlib
-import os
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# @Time    : 2019/3/4 15:11
+# @Email   : Zhuangshui@qiyi.com
+# @Desc    :
+
 import random
 import logging
 
@@ -7,25 +11,25 @@ import numpy as np
 from PIL import Image
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 
-model_module = importlib.import_module('model')
-config_module = importlib.import_module('config')
+from model.keras_model import get_ssd_model
+from config import *
 
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
     datefmt='%a, %d %b %Y %H:%M:%S',
-    filename=os.path.join(config_module.BASE_DIR, 'log', 'status.log'),
+    filename=os.path.join(BASE_DIR, 'status.log'),
     filemode='w'
 )
 
 
 def train(model):
-    img_train_folder = os.path.join(config_module.BASE_DIR, 'data', 'train')
+    img_train_folder = os.path.join(BASE_DIR, 'data', 'captchas', 'train')
 
     # callbacks 回调函数,用于记录过程量
-    model_parameter = os.path.join(config_module.BASE_DIR, 'model_parameter', 'weights_first.{epoch:02d}.hdf5')
+    model_parameter = os.path.join(BASE_DIR, 'model', 'model_parameter', 'weight_first.{epoch:02d}.hdf5')
     check_pointer = ModelCheckpoint(filepath=model_parameter)
-    model.load_weights(os.path.join(config_module.BASE_DIR, 'model_parameter', 'weights_first.25.hdf5'))
+    # model.load_weights(os.path.join(BASE_DIR, 'model', 'model_parameter', 'weights_first.25.hdf5'))
     hist = model.fit_generator(
         generator=generate_arrays_from_img(img_train_folder),
         steps_per_epoch=800,
@@ -43,13 +47,13 @@ def generate_arrays_from_img(folder):
     img_list = os.listdir(folder)
     random.shuffle(img_list)
 
-    X = np.zeros((config_module.BATCH_SIZE, config_module.IMG_WIDTH, config_module.IMG_HEIGHT, 3), dtype=np.uint8)
-    Y = np.zeros((config_module.BATCH_SIZE, config_module.CAPTCHA_LEN), dtype=np.uint8)
+    X = np.zeros((BATCH_SIZE, IMG_WIDTH, IMG_HEIGHT, 3), dtype=np.uint8)
+    Y = np.zeros((BATCH_SIZE, CAPTCHA_LEN), dtype=np.uint8)
 
     flag = 0
     length = len(img_list)
     while True:
-        for i in range(config_module.BATCH_SIZE):
+        for i in range(BATCH_SIZE):
             index = int(flag % length)
             file_name = img_list[index]
 
@@ -57,20 +61,22 @@ def generate_arrays_from_img(folder):
             img = os.path.join(folder, file_name)
             img_data = Image.open(img)
             X[i] = np.array(img_data).transpose((1, 0, 2))
-            Y[i] = [config_module.CHARACTERS.find(x) for x in y_label]
+            Y[i] = [CHARACTERS.find(x) for x in y_label]
 
             flag += 1
 
-        yield [X, Y, np.ones(config_module.BATCH_SIZE) * 8,
-               np.ones(config_module.BATCH_SIZE) * config_module.CAPTCHA_LEN], np.ones(config_module.BATCH_SIZE)
+        yield [X, Y, np.ones(BATCH_SIZE) * 8,
+               np.ones(BATCH_SIZE) * CAPTCHA_LEN], np.ones(BATCH_SIZE)
 
 
 def main():
-    base_model, model = model_module.model()
+    logging.info('Task begin')
+
+    base_model, model = get_ssd_model()
     train(model)
+
+    logging.info('Task down')
 
 
 if __name__ == '__main__':
-    logging.info('Task begin')
     main()
-    logging.info('Task down')
