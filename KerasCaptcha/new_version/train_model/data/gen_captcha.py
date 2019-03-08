@@ -3,12 +3,13 @@
 __author__ = 'zhuangshui'
 __time__ = '2019-03-08'
 
+import os
 import uuid
 import random
 
 from captcha.image import ImageCaptcha
 
-from config import *
+from keras_model.config import *
 
 # 字体
 FONTS = [r'./fonts/consola.ttf']
